@@ -1,0 +1,14 @@
+{
+  "name": "bible-mcp",
+  "version": "0.1.0",
+  "description": "MCP server for Bible text.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Mike Brinker",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.7.0"
+  }
+}
