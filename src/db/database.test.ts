@@ -10,5 +10,7 @@ test("Retrieve James 1:5 (English)", () => {
     testament: "NT",
     osisId: "Jas 1:5",
   });
-  console.log(result);
+  expect(result).toBe(
+    "Now if any of you lacks wisdom, he should ask God, who gives generously to all without finding fault, and it will be given to him.",
+  );
 });

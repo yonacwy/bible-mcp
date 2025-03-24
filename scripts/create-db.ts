@@ -23,7 +23,7 @@ console.log('Creating tables...');
 
 // Hebrew Old Testament
 db.exec(`
-CREATE TABLE hebrew_ot (
+CREATE TABLE hebrew_tokens (
   id TEXT PRIMARY KEY,
   ref TEXT NOT NULL,
   book_num TEXT NOT NULL,
@@ -39,17 +39,18 @@ CREATE TABLE hebrew_ot (
   morph TEXT,
   pos TEXT,
   gender TEXT,
-  number TEXT
+  number TEXT,
+  skip_space_after BOOLEAN DEFAULT 0
 );
-CREATE INDEX idx_hebrew_ot_ref ON hebrew_ot(ref);
-CREATE INDEX idx_hebrew_ot_book_num ON hebrew_ot(book_num);
-CREATE INDEX idx_hebrew_ot_book_chapter ON hebrew_ot(book_num, chapter);
-CREATE INDEX idx_hebrew_ot_book_chapter_verse ON hebrew_ot(book_num, chapter, verse);
+CREATE INDEX idx_hebrew_tokens_ref ON hebrew_tokens(ref);
+CREATE INDEX idx_hebrew_tokens_book_num ON hebrew_tokens(book_num);
+CREATE INDEX idx_hebrew_tokens_book_chapter ON hebrew_tokens(book_num, chapter);
+CREATE INDEX idx_hebrew_tokens_book_chapter_verse ON hebrew_tokens(book_num, chapter, verse);
 `);
 
 // Greek New Testament
 db.exec(`
-CREATE TABLE greek_nt (
+CREATE TABLE greek_tokens (
   id TEXT PRIMARY KEY,
   ref TEXT NOT NULL,
   book_num TEXT NOT NULL,
@@ -66,30 +67,31 @@ CREATE TABLE greek_nt (
   person TEXT,
   gender TEXT,
   number TEXT,
-  case_info TEXT
+  case_info TEXT,
+  skip_space_after BOOLEAN DEFAULT 0
 );
-CREATE INDEX idx_greek_nt_ref ON greek_nt(ref);
-CREATE INDEX idx_greek_nt_book_num ON greek_nt(book_num);
-CREATE INDEX idx_greek_nt_book_chapter ON greek_nt(book_num, chapter);
-CREATE INDEX idx_greek_nt_book_chapter_verse ON greek_nt(book_num, chapter, verse);
+CREATE INDEX idx_greek_tokens_ref ON greek_tokens(ref);
+CREATE INDEX idx_greek_tokens_book_num ON greek_tokens(book_num);
+CREATE INDEX idx_greek_tokens_book_chapter ON greek_tokens(book_num, chapter);
+CREATE INDEX idx_greek_tokens_book_chapter_verse ON greek_tokens(book_num, chapter, verse);
 `);
 
 // English Bible (BSB)
 db.exec(`
-CREATE TABLE bsb_english (
+CREATE TABLE english_tokens (
   id TEXT PRIMARY KEY,
-  verse_ref TEXT NOT NULL,
-  text TEXT NOT NULL,
   book_num TEXT NOT NULL,
   book_name TEXT NOT NULL,
   chapter INTEGER NOT NULL,
-  verse INTEGER NOT NULL
+  verse INTEGER NOT NULL,
+  word_position INTEGER NOT NULL,
+  text TEXT NOT NULL,
+  skip_space_after BOOLEAN NOT NULL,
+  exclude BOOLEAN NOT NULL
 );
-CREATE INDEX idx_bsb_english_verse_ref ON bsb_english(verse_ref);
-CREATE INDEX idx_bsb_english_book_num ON bsb_english(book_num);
-CREATE INDEX idx_bsb_english_book_name ON bsb_english(book_name);
-CREATE INDEX idx_bsb_english_book_chapter ON bsb_english(book_num, chapter);
-CREATE INDEX idx_bsb_english_book_chapter_verse ON bsb_english(book_num, chapter, verse);
+CREATE INDEX idx_english_tokens_book_num ON english_tokens(book_num);
+CREATE INDEX idx_english_tokens_book_chapter ON english_tokens(book_num, chapter);
+CREATE INDEX idx_english_tokens_book_chapter_verse ON english_tokens(book_num, chapter, verse);
 `);
 
 // Map of book numbers to book names
@@ -123,10 +125,10 @@ async function importHebrewOT(): Promise<void> {
   const hebrewData = path.join(process.cwd(), 'data', 'macula-hebrew.tsv');
   
   const insert = db.prepare(`
-    INSERT INTO hebrew_ot (
+    INSERT INTO hebrew_tokens (
       id, ref, book_num, book_name, chapter, verse, word_position,
-      class, text, transliteration, strong_number, lemma, morph, pos, gender, number
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      class, text, transliteration, strong_number, lemma, morph, pos, gender, number, skip_space_after
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
   
   const fileContent = fs.readFileSync(hebrewData, 'utf8');
@@ -162,6 +164,10 @@ async function importHebrewOT(): Promise<void> {
       const verse = refParts.length > 2 ? parseInt(refParts[2], 10) : 0;
       const wordPosition = parseWordPosition(id);
       
+      // In Hebrew, we might need heuristics for skip_space_after
+      // For now, we'll set it to false (0) for most words, except for words followed by punctuation
+      const skipSpaceAfter = 0; // Default to not skipping spaces
+      
       insert.run(
         id,
         row.ref,
@@ -178,7 +184,8 @@ async function importHebrewOT(): Promise<void> {
         row.morph,
         row.pos,
         row.gender,
-        row.number
+        row.number,
+        skipSpaceAfter
       );
     }
   });
@@ -211,10 +218,10 @@ async function importGreekNT(): Promise<void> {
   const greekData = path.join(process.cwd(), 'data', 'macula-greek-SBLGNT.tsv');
   
   const insert = db.prepare(`
-    INSERT INTO greek_nt (
+    INSERT INTO greek_tokens (
       id, ref, book_num, book_name, chapter, verse, word_position,
-      class, text, lemma, strong, morph, pos, person, gender, number, case_info
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      class, text, lemma, strong, morph, pos, person, gender, number, case_info, skip_space_after
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
   
   const fileContent = fs.readFileSync(greekData, 'utf8');
@@ -250,6 +257,10 @@ async function importGreekNT(): Promise<void> {
       const verse = refParts.length > 2 ? parseInt(refParts[2], 10) : 0;
       const wordPosition = parseWordPosition(id);
       
+      // In Greek, we might need heuristics for skip_space_after
+      // For now, we'll set it to false (0) for most words
+      const skipSpaceAfter = 0; // Default to not skipping spaces
+      
       insert.run(
         id,
         row.ref,
@@ -267,7 +278,8 @@ async function importGreekNT(): Promise<void> {
         row.person,
         row.gender,
         row.number,
-        row.case
+        row.case,
+        skipSpaceAfter
       );
     }
   });
@@ -294,94 +306,80 @@ async function importGreekNT(): Promise<void> {
   console.log(`\nImported ${count} Greek NT rows.`);
 }
 
-// Process BSB English data
-async function processVerseData(filePath: string, testament: string): Promise<any[]> {
-  const verseData = path.join(process.cwd(), 'data', filePath);
+// Import BSB English tokens directly
+async function importBSBEnglish(): Promise<void> {
+  console.log('Importing BSB English token data...');
   
-  const fileContent = fs.readFileSync(verseData, 'utf8');
+  // Process OT and NT tokens
+  await importBSBTokens('ot_BSB.tsv');
+  await importBSBTokens('nt_BSB.tsv');
+}
+
+// Import BSB tokens from TSV file
+async function importBSBTokens(filePath: string): Promise<void> {
+  const tokenData = path.join(process.cwd(), 'data', filePath);
+  
+  const insert = db.prepare(`
+    INSERT INTO english_tokens (
+      id, book_num, book_name, chapter, verse, word_position, text, skip_space_after, exclude
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+  
+  const fileContent = fs.readFileSync(tokenData, 'utf8');
   const records = parse(fileContent, {
     delimiter: '\t',
     columns: true,
     skip_empty_lines: true
   });
   
-  // Process verse words into complete verses
-  const verses: Record<string, string[]> = {};
-  
-  for (const row of records) {
-    if (row.exclude === 'y') continue;
-    
-    const verseRef = row.source_verse;
-    if (!verses[verseRef]) {
-      verses[verseRef] = [];
-    }
-    
-    // Add space after word unless specified not to
-    const text = row.text + (row.skip_space_after === 'y' ? '' : ' ');
-    verses[verseRef].push(text);
-  }
-  
-  // Convert to array of complete verses
-  const completeVerses = [];
-  for (const [verseRef, wordArray] of Object.entries(verses)) {
-    const parsedRef = parseVerseId(verseRef);
-    if (!parsedRef) continue;
-    
-    const text = wordArray.join('').trim();
-    
-    completeVerses.push({
-      id: verseRef,
-      verse_ref: `${parsedRef.book} ${parsedRef.chapter}:${parsedRef.verse}`,
-      text,
-      book_num: parsedRef.bookId,
-      book_name: parsedRef.book,
-      chapter: parsedRef.chapter,
-      verse: parsedRef.verse
-    });
-  }
-  
-  return completeVerses;
-}
-
-// Import BSB English data
-async function importBSBEnglish(): Promise<void> {
-  console.log('Importing BSB English data...');
-  
-  // Process OT and NT separately, then combine
-  const otVerses = await processVerseData('ot_BSB.tsv', 'OT');
-  const ntVerses = await processVerseData('nt_BSB.tsv', 'NT');
-  const allVerses = [...otVerses, ...ntVerses];
-  
-  // Insert into database
-  const insert = db.prepare(`
-    INSERT INTO bsb_english (
-      id, verse_ref, text, book_num, book_name, chapter, verse
-    ) VALUES (?, ?, ?, ?, ?, ?, ?)
-  `);
-  
-  const insertMany = db.transaction((verses: any[]) => {
-    for (const verse of verses) {
+  const insertMany = db.transaction((rows: any[]) => {
+    for (const row of rows) {
+      // Parse the source_verse to get book, chapter, verse
+      const sourceVerse = row.source_verse; // Format like "01001001" (book+chapter+verse)
+      if (!sourceVerse || sourceVerse.length < 8) continue;
+      
+      const bookNum = sourceVerse.substring(0, 2);
+      const chapter = parseInt(sourceVerse.substring(2, 5), 10);
+      const verse = parseInt(sourceVerse.substring(5, 8), 10);
+      
+      // Parse the id to get word position
+      const id = row.id; // Format like "01001001001"
+      const wordPosition = id && id.length >= 11 ? parseInt(id.substring(8, 11), 10) : 0;
+      
       insert.run(
-        verse.id,
-        verse.verse_ref,
-        verse.text,
-        verse.book_num,
-        verse.book_name,
-        verse.chapter,
-        verse.verse
+        id,
+        bookNum,
+        bookNames[bookNum] || '',
+        chapter,
+        verse,
+        wordPosition,
+        row.text,
+        row.skip_space_after === 'y' ? 1 : 0,
+        row.exclude === 'y' ? 1 : 0
       );
     }
   });
   
-  // Insert in batches
+  const rows = [];
+  let count = 0;
   const batchSize = 1000;
-  for (let i = 0; i < allVerses.length; i += batchSize) {
-    const batch = allVerses.slice(i, i + batchSize);
-    insertMany(batch);
-    process.stdout.write(`\rProcessed ${Math.min(i + batchSize, allVerses.length)} of ${allVerses.length} verses...`);
+  
+  for (const row of records) {
+    rows.push(row);
+    count++;
+    
+    if (rows.length >= batchSize) {
+      insertMany(rows);
+      rows.length = 0;
+      process.stdout.write(`\rProcessed ${count} rows...`);
+    }
   }
   
-  console.log(`\nImported ${allVerses.length} BSB English verses.`);
+  if (rows.length > 0) {
+    insertMany(rows);
+  }
+  
+  console.log(`\nImported ${count} BSB English tokens from ${filePath}.`);
 }
 
 // Run all import functions
@@ -390,61 +388,6 @@ async function importAll(): Promise<void> {
     await importHebrewOT();
     await importGreekNT();
     await importBSBEnglish();
-    
-    // Create views for common queries
-    
-    // 1. View for complete verses (BSB English)
-    db.exec(`
-      CREATE VIEW verse_view AS
-      SELECT 
-        id,
-        verse_ref,
-        text as english_text,
-        book_num,
-        book_name,
-        chapter,
-        verse
-      FROM bsb_english
-    `);
-    
-    // 2. View for Hebrew words with verse context
-    db.exec(`
-      CREATE VIEW hebrew_word_view AS
-      SELECT 
-        h.id,
-        h.ref,
-        h.text as hebrew_text,
-        h.lemma,
-        h.strong_number,
-        h.transliteration,
-        h.book_num,
-        h.book_name,
-        h.chapter,
-        h.verse,
-        h.word_position,
-        b.text as english_verse
-      FROM hebrew_ot h
-      LEFT JOIN bsb_english b ON h.book_num = b.book_num AND h.chapter = b.chapter AND h.verse = b.verse
-    `);
-    
-    // 3. View for Greek words with verse context
-    db.exec(`
-      CREATE VIEW greek_word_view AS
-      SELECT 
-        g.id,
-        g.ref,
-        g.text as greek_text,
-        g.lemma,
-        g.strong,
-        g.book_num,
-        g.book_name,
-        g.chapter,
-        g.verse,
-        g.word_position,
-        b.text as english_verse
-      FROM greek_nt g
-      LEFT JOIN bsb_english b ON g.book_num = b.book_num AND g.chapter = b.chapter AND g.verse = b.verse
-    `);
     
     console.log('Database creation complete!');
   } catch (error) {
