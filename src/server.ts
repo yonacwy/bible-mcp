@@ -42,6 +42,7 @@ const server = new McpServer(
           },
         },
       },
+      prompts: {},
     },
   },
 );
@@ -161,6 +162,9 @@ server.tool(
     };
   },
 );
+
+// Resources and prompts are automatically handled by the McpServer
+// Based on what we registered using server.resource() and server.prompt()
 
 // Start receiving messages on stdin and sending messages on stdout
 const transport = new StdioServerTransport();

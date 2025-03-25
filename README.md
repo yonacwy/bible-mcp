@@ -22,3 +22,9 @@ Bible MCP is a tool that allows Large Language Models (LLMs) to access and query
 ## Development
 
 See [CLAUDE.md](./CLAUDE.md) for development guidelines and commands.
+
+## Build
+
+- `npm run build`
+- `docker build -t bible-mcp .`
+- `docker run -i bible-mcp`

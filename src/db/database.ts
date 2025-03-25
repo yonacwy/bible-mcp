@@ -89,7 +89,6 @@ export function getEnglishText(reference: BibleReference): string | null {
     return null;
   }
 
-  console.log(tokens);
   return assembleTextFromTokens(tokens);
 }
 
