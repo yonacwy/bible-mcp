@@ -8,8 +8,8 @@ import Database from "better-sqlite3";
 import type { BibleReference } from "../utils/referenceUtils.js";
 import { referenceToDbId } from "../utils/referenceUtils.js";
 
-// Default database path
-const DEFAULT_DB_PATH = path.join(process.cwd(), "bible.db");
+// Default database path - use path relative to the project root
+const DEFAULT_DB_PATH = path.resolve(path.dirname(new URL(import.meta.url).pathname), '../../bible.db');
 
 let db: any = null;
 
