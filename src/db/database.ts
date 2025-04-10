@@ -124,7 +124,7 @@ export function getPassage(reference: BibleReference): Array<{
         `
       SELECT text, skip_space_after
       FROM english_tokens
-      WHERE book_num = ? AND chapter = ? AND verse = ? AND exclude = 0
+      WHERE book_num = ? AND chapter = ? AND verse = ?
       ORDER BY word_position
     `,
       )
@@ -293,7 +293,7 @@ export function searchText(
   const findVersesSql = `
     SELECT DISTINCT book_num, book_name, chapter, verse
     FROM english_tokens
-    WHERE ${conditions.join(" AND ")} AND exclude = 0
+    WHERE ${conditions.join(" AND ")}
     ORDER BY book_num, chapter, verse
     LIMIT ? OFFSET ?
   `;
@@ -314,7 +314,7 @@ export function searchText(
         `
       SELECT text, skip_space_after
       FROM english_tokens
-      WHERE book_num = ? AND chapter = ? AND verse = ? AND exclude = 0
+      WHERE book_num = ? AND chapter = ? AND verse = ?
       ORDER BY word_position
     `,
       )
