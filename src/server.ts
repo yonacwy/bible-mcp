@@ -1,9 +1,6 @@
-import {
-  McpServer,
-  ResourceTemplate,
-} from "@modelcontextprotocol/sdk/server/mcp.js";
+import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { getEnglishText } from "./db/database.js";
+import { getEnglishText, searchText } from "./db/database.js";
 import { parseReference } from "./utils/referenceUtils.js";
 import { z } from "zod";
 
@@ -39,6 +36,16 @@ const server = new McpServer(
               description: "Bible version (default: BSB)",
               optional: true,
             },
+            limit: {
+              type: "number",
+              description: "Maximum number of results per page",
+              optional: true,
+            },
+            offset: {
+              type: "number",
+              description: "Offset for pagination",
+              optional: true,
+            },
           },
         },
       },
@@ -69,7 +76,6 @@ server.tool(
             text: `Invalid Bible reference: "${reference}". Please use a format like "John 3:16" or "Genesis 1:1".`,
           },
         ],
-        // Adding examples to the response for better client understanding
         examples: [
           {
             name: "Get John 3:16",
@@ -107,7 +113,6 @@ server.tool(
           text: text,
         },
       ],
-      // Adding examples to successful responses as well
       examples: [
         {
           name: "Get John 3:16",
@@ -126,23 +131,27 @@ server.tool(
   },
 );
 
-// Example tool for searching Bible text
+// Tool for searching Bible text
 server.tool(
   "searchText",
   "Search for text in the Bible",
   {
     query: z.string().describe("Text to search for in the Bible"),
     version: z.string().optional().describe("Bible version (default: BSB)"),
+    limit: z.number().optional().describe("Maximum number of results per page"),
+    offset: z.number().optional().describe("Offset for pagination"),
   },
-  async ({ query, version = "BSB" }) => {
-    // Placeholder - implement actual search functionality
+  async ({ query, version = "BSB", limit = 100, offset = 0 }) => {
+    console.log(`[server.ts] Received search request: query="${query}", version="${version}", limit=${limit}, offset=${offset}`);
+    const results = await searchText(query, undefined, undefined, limit, offset);
+    console.log(`[server.ts] Returning ${results.length} results for offset ${offset}`);
+
     return {
-      content: [
-        {
-          type: "text",
-          text: `Search results for "${query}" in ${version}: [Implementation pending]`,
-        },
-      ],
+      content: results.map(result => ({
+        type: "text",
+        text: result.text,
+        reference: result.reference,
+      })),
       examples: [
         {
           name: "Search for 'wisdom'",
@@ -161,9 +170,6 @@ server.tool(
     };
   },
 );
-
-// Resources and prompts are automatically handled by the McpServer
-// Based on what we registered using server.resource() and server.prompt()
 
 // Start receiving messages on stdin and sending messages on stdout
 const transport = new StdioServerTransport();

@@ -50,12 +50,9 @@ function assembleTextFromTokens(
 ): string {
   return tokens.reduce((text, token, index) => {
     const tokenText = token.text;
-    // Determine if we should add a space after this token
-    // Convert skip_space_after to boolean (it might be 0/1 from SQLite)
     const skipSpace = !!token.skip_space_after;
     const space = skipSpace ? "" : " ";
 
-    // Only add space if this isn't the last token
     return text + tokenText + (index < tokens.length - 1 ? space : "");
   }, "");
 }
@@ -108,7 +105,6 @@ export function getPassage(reference: BibleReference): Array<{
   const startVerse = reference.verse || 1;
   const endVerse = reference.endVerse || startVerse;
 
-  // First get the distinct verses in range
   const verses = db
     .prepare(
       `
@@ -120,11 +116,9 @@ export function getPassage(reference: BibleReference): Array<{
     )
     .all(bookId, chapter, startVerse, endVerse);
 
-  // Then assemble each verse from tokens
   return verses.map((verseRow: { verse: number }) => {
     const verseReference = `${book} ${chapter}:${verseRow.verse}`;
 
-    // Get tokens for this verse
     const tokens = db
       .prepare(
         `
@@ -258,13 +252,15 @@ export function getAssembledGreekText(
  * @param testament Optional testament filter ('OT' or 'NT')
  * @param book Optional book filter (book number)
  * @param limit Maximum number of results to return
+ * @param offset Offset for pagination
  * @returns Array of verse objects matching the search
  */
 export function searchText(
   query: string,
   testament?: string,
   book?: string,
-  limit: number = 20,
+  limit: number = 100,
+  offset: number = 0,
 ): Array<{
   text: string;
   reference: string;
@@ -274,9 +270,11 @@ export function searchText(
 }> {
   if (!db) initDatabase();
 
+  console.log(`[database.ts] Starting search: query="${query}", testament="${testament}", book="${book}", limit=${limit}, offset=${offset}`);
+
   // Build query conditions
   const conditions = ["text LIKE ?"];
-  const params = [`%${query}%`];
+  const params: any[] = [`%${query}%`];
 
   if (testament) {
     if (testament === "OT") {
@@ -288,7 +286,7 @@ export function searchText(
 
   if (book) {
     conditions.push("book_num = ?");
-    params.push(String(book));
+    params.push(book);
   }
 
   // First, find all distinct verses that contain the search term
@@ -297,15 +295,20 @@ export function searchText(
     FROM english_tokens
     WHERE ${conditions.join(" AND ")} AND exclude = 0
     ORDER BY book_num, chapter, verse
-    LIMIT ?
+    LIMIT ? OFFSET ?
   `;
 
-  params.push(String(limit));
+  params.push(limit);
+  params.push(offset);
+
+  console.log(`[database.ts] Executing SQL: ${findVersesSql.replace(/\s+/g, ' ').trim()} with params:`, params);
 
   const matchingVerses = db.prepare(findVersesSql).all(...params);
 
+  console.log(`[database.ts] Found ${matchingVerses.length} matching verses at offset ${offset}`);
+
   // Now for each matching verse, get all tokens and assemble the text
-  return matchingVerses.map((verse: any) => {
+  const results = matchingVerses.map((verse: any) => {
     const tokens = db
       .prepare(
         `
@@ -327,6 +330,9 @@ export function searchText(
       verse: verse.verse,
     };
   });
+
+  console.log(`[database.ts] Returning ${results.length} results for query="${query}" at offset ${offset}`);
+  return results;
 }
 
 export default {

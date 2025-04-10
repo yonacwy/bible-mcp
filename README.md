@@ -28,3 +28,17 @@ See [CLAUDE.md](./CLAUDE.md) for development guidelines and commands.
 - `npm run build`
 - `docker build -t bible-mcp .`
 - `docker run -i bible-mcp`
+
+
+# Bible MCP Client/Server Testing
+
+## Overview
+
+Run from different consoles server then client from same project folder.
+
+Server
+- `npm install express ws @types/express @types/ws`
+- `npm run dev`
+
+Client
+- `npm run dev:web`
