@@ -1,5 +1,5 @@
 // import { getEnglishText } from "./database.js";
-import { getEnglishText } from "@/db/database.ts";
+import { getEnglishText } from "./database.js";
 
 test("Retrieve James 1:5 (English)", () => {
   const result = getEnglishText({

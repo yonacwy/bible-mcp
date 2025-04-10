@@ -127,45 +127,49 @@ server.tool(
 );
 
 // Example tool for searching Bible text
-// server.tool(
-//   "searchText",
-//   "Search for text in the Bible", // Add description as second parameter
-//   {
-//     query: z.string().describe("Text to search for in the Bible"),
-//     version: z.string().optional().describe("Bible version (default: BSB)"),
-//   },
-//   async ({ query, version = "BSB" }) => {
-//     // Placeholder - implement actual search functionality
-//     return {
-//       content: [
-//         {
-//           type: "text",
-//           text: `Search results for "${query}" in ${version}: [Implementation pending]`,
-//         },
-//       ],
-//       // Adding examples to the response metadata
-//       examples: [
-//         {
-//           name: "Search for 'wisdom'",
-//           arguments: {
-//             query: "wisdom",
-//           },
-//         },
-//         {
-//           name: "Search with specific version",
-//           arguments: {
-//             query: "love",
-//             version: "BSB",
-//           },
-//         },
-//       ],
-//     };
-//   },
-// );
+server.tool(
+  "searchText",
+  "Search for text in the Bible",
+  {
+    query: z.string().describe("Text to search for in the Bible"),
+    version: z.string().optional().describe("Bible version (default: BSB)"),
+  },
+  async ({ query, version = "BSB" }) => {
+    // Placeholder - implement actual search functionality
+    return {
+      content: [
+        {
+          type: "text",
+          text: `Search results for "${query}" in ${version}: [Implementation pending]`,
+        },
+      ],
+      examples: [
+        {
+          name: "Search for 'wisdom'",
+          arguments: {
+            query: "wisdom",
+          },
+        },
+        {
+          name: "Search with specific version",
+          arguments: {
+            query: "love",
+            version: "BSB",
+          },
+        },
+      ],
+    };
+  },
+);
 
 // Resources and prompts are automatically handled by the McpServer
 // Based on what we registered using server.resource() and server.prompt()
 
 // Start receiving messages on stdin and sending messages on stdout
 const transport = new StdioServerTransport();
-await server.connect(transport);
+try {
+  await server.connect(transport);
+  console.log("MCP server connected successfully!");
+} catch (error) {
+  console.error("MCP server connection error:", error);
+}

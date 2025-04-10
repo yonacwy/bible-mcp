@@ -2,9 +2,8 @@
   "compilerOptions": {
     "target": "ES2022",
     "module": "NodeNext",
-    "moduleResolution": "NodeNext",
-    "allowImportingTsExtensions": true,
-    "noEmit": true,
+    "moduleResolution": "Node16",
+    "noEmit": false,
     "esModuleInterop": true,
     "outDir": "./dist",
     "strict": true,
@@ -25,7 +24,4 @@
     "src/**/*.json",
     "scripts/**/*.ts"
   ],
-  "ts-node": {
-    "transpileOnly": true
-  }
 }
